@@ -1,226 +1,365 @@
 from tkinter import *
 import random
 
-
+# Constants
 score = 0
-direction = "right"
 
-GAME_WIDTH = 1050
-GAME_HEIGHT = 630
-SPEED =  
-SPACE_SIZE = 35
-BODY_PARTS = score + 3
+GAME_WIDTH = 1000
+GAME_HEIGHT = 600
+SPEED = 75
+SPACE_SIZE = 50
+INITIAL_BODY_PARTS = score + 3
 SNAKE_COLOR = "#00FF00"
-# HEAD_COLOR = "#00FFFF"
 FOOD_COLOR = "#FF0000"
-OBS_COLOR = "#f2f2f2"
 BACKGROUND_COLOR = "#121212"
 
 
-class Snake:
+class SnakeAndFood:
     def __init__(self):
-        self.bodySize = BODY_PARTS
-        self.coordinates = []
-        self.squares = []
+        # Initialize the main window
+        self.snek = Tk()
+        self.snek.title("Snake Game")
+        self.snek.resizable(False, False)
 
-        for i in range(0, BODY_PARTS):
-            self.coordinates.append([0, (GAME_HEIGHT / 2)])
+        self.direction = "right"
 
-        for x, y in self.coordinates:
-            square = canvas.create_rectangle(
+        # Label for the score
+        self.score_frame = Frame(self.snek, bg="grey", height=40)
+        self.score_frame.pack(fill=X)
+        self.label = Label(
+            self.score_frame,
+            text=f"Score: {score}",
+            font=("consolas", 20),
+            bg="grey",
+            fg="white",
+        )
+        self.label.pack(anchor=W, padx=10)
+
+        # Game canvas
+        self.canvas = Canvas(
+            self.snek, bg=BACKGROUND_COLOR, width=GAME_WIDTH, height=GAME_HEIGHT
+        )
+        self.canvas.pack()
+
+        # Center the window
+        self.snek.update_idletasks()
+        window_width = self.snek.winfo_width()
+        window_height = self.snek.winfo_height()
+        screen_width = self.snek.winfo_screenwidth()
+        screen_height = self.snek.winfo_screenheight()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        self.snek.geometry(f"{window_width}x{window_height}+{x}+{0}")
+
+        # Initialize snake and food
+        self.snake = self.init_snake()
+        self.food = self.init_food(self.snake)
+
+        # Bind arrow keys for direction change
+        self.snek.bind("<Left>", lambda event: self.change_direction("left"))
+        self.snek.bind("<Right>", lambda event: self.change_direction("right"))
+        self.snek.bind("<Up>", lambda event: self.change_direction("up"))
+        self.snek.bind("<Down>", lambda event: self.change_direction("down"))
+
+        # Start the game loop
+        self.next_turn()
+
+    def init_snake(self):
+        body_size = INITIAL_BODY_PARTS
+        coordinates = []
+        squares = []
+
+        for i in range(body_size):
+            coordinates.append([0, (GAME_HEIGHT / 2)])
+
+        for x, y in coordinates:
+            square = self.canvas.create_rectangle(
                 x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake"
             )
-            self.squares.append(square)
+            squares.append(square)
 
+        return {"coordinates": coordinates, "squares": squares}
 
-class Food:
-    def __init__(self, snake):
-        self.create_food(snake)
-
-    def create_food(self, snake):
-        # x, y = snake.coordinates[0]
-
+    def init_food(self, snake):
         while True:
-            x = random.randint(0, int(GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
-            y = random.randint(0, int(GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
-            # print("food = " + str([int(x / SPACE_SIZE), int(y / SPACE_SIZE)]))
-            # Check if the new food coordinates are not on the snake's body
-
-            onSnake = False
-            for coord in snake.coordinates:
-                if coord == (x, y):
-                    onSnake = True
-                    break
-
-            if onSnake == False:
-                self.coordinates = [x, y]
+            x = random.randint(0, (GAME_WIDTH // SPACE_SIZE) - 1) * SPACE_SIZE
+            y = random.randint(0, (GAME_HEIGHT // SPACE_SIZE) - 1) * SPACE_SIZE
+            if [x, y] not in snake["coordinates"]:
                 break
 
-                # Create the food on the canvas
-        canvas.create_oval(
+        self.canvas.create_oval(
             x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food"
         )
+        return {"coordinates": [x, y]}
 
+    def change_direction(self, new_direction):
+        print("THis executed")
+        # Prevent reversing direction
+        opposites = {"left": "right", "right": "left", "up": "down", "down": "up"}
+        if new_direction != opposites.get(self.direction):
+            self.direction = new_direction
 
-def nextTurn(snake, food):
-    x, y = snake.coordinates[0]
-    # print(snake.coordinates[0])
-
-    # Move the snake in the current direction
-    if direction == "up":
-        y -= SPACE_SIZE
-    elif direction == "down":
-        y += SPACE_SIZE
-    elif direction == "left":
-        x -= SPACE_SIZE
-    elif direction == "right":
-        x += SPACE_SIZE
-
-    # Wrap around the screen borders
-    if x < 0:
-        x = GAME_WIDTH - SPACE_SIZE
-    elif x >= GAME_WIDTH:
-        x = 0
-    if y < 0:
-        y = GAME_HEIGHT - SPACE_SIZE
-    elif y >= GAME_HEIGHT:
-        y = 0
-
-    # Insert new coordinates at the beginning of the snake's body
-    snake.coordinates.insert(0, (x, y))
-
-    # Draw the new head
-    square = canvas.create_rectangle(
-        x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR
-    )
-    snake.squares.insert(0, square)
-
-    # Check if the snake has eaten the food
-    if x == food.coordinates[0] and y == food.coordinates[1]:
+    def next_turn(self):
+        x, y = self.snake["coordinates"][0]
         global score
-        score += 1
-        label.config(text="Score:{}".format(score))
-        canvas.delete("food")
-        food = Food(snake)  # Create new food, avoiding snake's body
-    else:
-        # If no food is eaten, remove the tail
-        del snake.coordinates[-1]
-        canvas.delete(snake.squares[-1])
-        del snake.squares[-1]
 
-    if checkCollision(snake):
-        gameover()
-    else:
-        snek.after(SPEED, nextTurn, snake, food)
-    # snek.after(SPEED, nextTurn, snake, food)
+        # Move the snake in the current direction
+        if self.direction == "up":
+            y -= SPACE_SIZE
+        elif self.direction == "down":
+            y += SPACE_SIZE
+        elif self.direction == "left":
+            x -= SPACE_SIZE
+        elif self.direction == "right":
+            x += SPACE_SIZE
 
+        # Wrap around the screen borders
+        if x < 0:
+            x = GAME_WIDTH - SPACE_SIZE
+        elif x >= GAME_WIDTH:
+            x = 0
+        if y < 0:
+            y = GAME_HEIGHT - SPACE_SIZE
+        elif y >= GAME_HEIGHT:
+            y = 0
 
-def changeDirection(newDirection=None):
-    global direction
+        # Add the new head position
+        self.snake["coordinates"].insert(0, [x, y])
 
-    if newDirection is None:
-        snek.bind("<Left>", lambda event: changeDirection("left"))
-        snek.bind("<Right>", lambda event: changeDirection("right"))
-        snek.bind("<Up>", lambda event: changeDirection("up"))
-        snek.bind("<Down>", lambda event: changeDirection("down"))
-        return
+        # Draw the new head
+        square = self.canvas.create_rectangle(
+            x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR
+        )
+        self.snake["squares"].insert(0, square)
 
-    opposites = {"left": "right", "right": "left", "up": "down", "down": "up"}
-    if newDirection != opposites.get(direction):
-        direction = newDirection
+        # Check if the snake eats the food
+        if [x, y] == self.food["coordinates"]:
+            score += 1
+            self.label.config(text=f"Score: {score}")
+            self.canvas.delete("food")
+            self.food = self.init_food(self.snake)
+        else:
+            # Remove the last part of the snake's body
+            del self.snake["coordinates"][-1]
+            self.canvas.delete(self.snake["squares"][-1])
+            del self.snake["squares"][-1]
 
+        # Check for collisions
+        if self.check_collision():
+            self.game_over()
+        else:
+            self.snek.after(SPEED, self.next_turn)
 
-def checkCollision(snake):
-    x, y = snake.coordinates[0]
-
-    for bodyPart in snake.coordinates[1:]:
-        if x == bodyPart[0] and y == bodyPart[1]:
-            print("Game Over")
+    def check_collision(self):
+        x, y = self.snake["coordinates"][0]
+        if [x, y] in self.snake["coordinates"][1:]:
             return True
+        return False
+
+    def game_over(self):
+        self.canvas.delete("all")
+        self.canvas.create_text(
+            GAME_WIDTH // 2,
+            GAME_HEIGHT // 2,
+            font=("consolas", 50),
+            text="Game Over!",
+            fill="red",
+            tag="gameover",
+        )
+
+    def mainloop(self):
+        self.snek.mainloop()
 
 
-def gameover():
-    canvas.delete(ALL)
-    canvas.create_text(
-        canvas.winfo_width() / 2,
-        canvas.winfo_height() / 2,
-        font=("consolas", 70),
-        text="Game Over!",
-        fill="red",
-        tag="gameover",
-    )
+class GUI:
+    def __init__(self):
+        # Highlight: Create the main window
+        self.root = Tk()
+        self.root.title("Snake Game Menu")
+        self.root.resizable(False, False)
+
+        self.root.update_idletasks()
+        window_width = self.root.winfo_width()
+        window_height = self.root.winfo_height()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        self.root.geometry(f"{400}x{400}+{x}+{0}")
+
+        # Highlight: Main menu screen
+        self.main_menu()
+
+    def main_menu(self):
+        """Main menu screen with buttons to navigate."""
+        self.clear_window()
+
+        # Title Label
+        Label(
+            self.root,
+            text="Snake Game",
+            font=("Consolas", 24, "bold"),
+            fg="white",
+            bg=BACKGROUND_COLOR,
+            pady=20,
+        ).pack(fill=X)
+
+        # Start Button
+        Button(
+            self.root,
+            text="Start Game",
+            font=("Consolas", 14),
+            command=self.start_game,
+            width=20,
+        ).pack(pady=10)
+
+        # Change Speed Button
+        Button(
+            self.root,
+            text="Change Speed",
+            font=("Consolas", 14),
+            command=self.change_speed,
+            width=20,
+        ).pack(pady=10)
+
+        # Change Map Button
+        Button(
+            self.root,
+            text="Change Map",
+            font=("Consolas", 14),
+            command=self.change_map,
+            width=20,
+        ).pack(pady=10)
+
+        # Exit Button
+        Button(
+            self.root,
+            text="Exit",
+            font=("Consolas", 14),
+            command=self.root.quit,
+            width=20,
+        ).pack(pady=10)
+
+    def clear_window(self):
+        """Clears all widgets from the root window."""
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+    def start_game(self):
+        """Starts the Snake game."""
+        self.root.destroy()
+        snake_game = SnakeAndFood()
+        snake_game.mainloop()
+
+    def change_speed(self):
+        """Displays speed settings."""
+        self.clear_window()
+
+        self.current_speed_var = StringVar()
+        self.current_speed_var.set(
+            f"Select Speed\nCurrent Speed: {self.get_speed_text(SPEED)}"
+        )
+
+        Label(
+            self.root,
+            textvariable=self.current_speed_var,
+            font=("Consolas", 18),
+            bg=BACKGROUND_COLOR,
+            fg="white",
+        ).pack(pady=20)
+
+        speeds = [150, 100, 75, 50]
+        text = ""
+        for speed in speeds:
+            if speed == 150:
+                text = "Easy"
+            elif speed == 100:
+                text = "Medium"
+            elif speed == 75:
+                text = "Hard"
+            elif speed == 50:
+                text = "Very Hard"
+            Button(
+                self.root,
+                text=f"Speed: {text}",
+                font=("Consolas", 14),
+                command=lambda s=speed: self.set_speed(s),
+                width=20,
+            ).pack(pady=5)
+
+        Button(
+            self.root,
+            text="Back to Menu",
+            font=("Consolas", 14),
+            command=self.main_menu,
+            width=20,
+        ).pack(pady=20)
+
+    def set_speed(self, speed):
+        """Sets the game speed."""
+        global SPEED
+        SPEED = speed
+
+        self.current_speed_var.set(
+            f"Select Speed\nCurrent Speed: {self.get_speed_text(SPEED)}"
+        )
+
+    def get_speed_text(self, speed):
+        """Converts speed value to descriptive text."""
+        if speed == 150:
+            return "Easy"
+        elif speed == 100:
+            return "Medium"
+        elif speed == 75:
+            return "Hard"
+        elif speed == 50:
+            return "Very Hard"
+        return "Unknown"
+
+    def change_map(self):
+        """Displays map settings."""
+        self.clear_window()
+
+        Label(
+            self.root,
+            text="Select Map",
+            font=("Consolas", 18),
+            bg=BACKGROUND_COLOR,
+            fg="white",
+        ).pack(pady=20)
+
+        maps = ["Classic", "Obstacles", "Maze"]
+        for map_option in maps:
+            Button(
+                self.root,
+                text=f"Map: {map_option}",
+                font=("Consolas", 14),
+                command=lambda m=map_option: self.set_map(m),
+                width=20,
+            ).pack(pady=5)
+
+        Button(
+            self.root,
+            text="Back to Menu",
+            font=("Consolas", 14),
+            command=self.main_menu,
+            width=20,
+        ).pack(pady=20)
+
+    def set_map(self, map_name):
+        """Sets the map."""
+        print(f"Map selected: {map_name}")  # Replace with map functionality
+        self.main_menu()
+
+    def mainloop(self):
+        self.root.mainloop()
+
+
+class Obstacles:
     pass
 
 
-snek = Tk()
-snek.title("sneks")
-snek.resizable(False, False)
-
-label = Label(snek, text="Score:{}".format(score), font=("consolas", 40))
-label.pack()
-
-
-# ----------------------------------------------------------------
-# Obstackes
-# ----------------------------------------------------------------
-def createObstacleObj(x, y):
-    square = canvas.create_rectangle(
-        x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=OBS_COLOR, tag="obstacle"
-    )
-    pass
-
-
-# ----------------------------------------------------------------
-# Lvl 1
-# ----------------------------------------------------------------
-# def createLvl1():
-#     for i in range(0, int(GAME_HEIGHT / SPACE_SIZE)):
-#         a = 0
-#         createObstacleObj(0, a + i)
-#         a += SPACE_SIZE
-#     # createObstacleObj(1, 2)
-#     # createObstacleObj(1, 3)
-#     # createObstacleObj(1, 4)
-#     pass
-
-
-# ----------------------------------------------------------------
-# Lvl 2
-# ----------------------------------------------------------------
-def createLvl2():
-    pass
-
-
-# ----------------------------------------------------------------
-# Lvl 3
-# ----------------------------------------------------------------
-def createLvl3():
-    pass
-
-
-# ----------------------------------------------------------------
-# GUI settings
-# ----------------------------------------------------------------
-
-
-canvas = Canvas(snek, bg=BACKGROUND_COLOR, width=GAME_WIDTH, height=GAME_HEIGHT)
-canvas.pack()
-
-snek.update()
-
-windowHeight = snek.winfo_height()
-windowWidth = snek.winfo_width()
-screenHeight = snek.winfo_screenheight()
-screenWidth = snek.winfo_screenwidth()
-
-x = int((screenWidth / 2) - (windowWidth / 2))
-y = int((screenHeight / 2) - (windowHeight / 2))
-
-snek.geometry(f"{windowWidth}x{windowHeight}+{x}+{0}")
-
-snake = Snake()
-food = Food(snake)
-changeDirection()
-nextTurn(snake, food)
-
-snek.mainloop()
+# Run the game
+if __name__ == "__main__":
+    gui = GUI()
+    gui.mainloop()
